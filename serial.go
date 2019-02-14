@@ -108,6 +108,9 @@ type Config struct {
 	// Number of stop bits to use. Default is 1 (1 stop bit).
 	StopBits StopBits
 
+	// Enable RTS/CTS (hardware) flow control.
+	RTSCTSFlowControl bool
+
 	// RTSFlowControl bool
 	// DTRFlowControl bool
 	// XONFlowControl bool
@@ -126,7 +129,7 @@ var ErrBadParity error = errors.New("unsupported parity setting")
 
 // OpenPort opens a serial port with the specified configuration
 func OpenPort(c *Config) (*Port, error) {
-	size, par, stop := c.Size, c.Parity, c.StopBits
+	size, par, stop, fctl := c.Size, c.Parity, c.StopBits, c.RTSCTSFlowControl
 	if size == 0 {
 		size = DefaultSize
 	}
@@ -136,7 +139,7 @@ func OpenPort(c *Config) (*Port, error) {
 	if stop == 0 {
 		stop = Stop1
 	}
-	return openPort(c.Name, c.Baud, size, par, stop, c.ReadTimeout)
+	return openPort(c.Name, c.Baud, size, par, stop, fctl, c.ReadTimeout)
 }
 
 // Converts the timeout values for Linux / POSIX systems

@@ -37,7 +37,7 @@ type structTimeouts struct {
 	WriteTotalTimeoutConstant   uint32
 }
 
-func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
+func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, flowControl bool, readTimeout time.Duration) (p *Port, err error) {
 	if len(name) > 0 && name[0] != '\\' {
 		name = "\\\\.\\" + name
 	}
@@ -59,7 +59,7 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 		}
 	}()
 
-	if err = setCommState(h, baud, databits, parity, stopbits); err != nil {
+	if err = setCommState(h, baud, databits, parity, stopbits, flowControl); err != nil {
 		return nil, err
 	}
 	if err = setupComm(h, 64, 64); err != nil {
@@ -171,7 +171,7 @@ func getProcAddr(lib syscall.Handle, name string) uintptr {
 	return addr
 }
 
-func setCommState(h syscall.Handle, baud int, databits byte, parity Parity, stopbits StopBits) error {
+func setCommState(h syscall.Handle, baud int, databits byte, parity Parity, stopbits StopBits, flowControl bool) error {
 	var params structDCB
 	params.DCBlength = uint32(unsafe.Sizeof(params))
 
@@ -206,6 +206,11 @@ func setCommState(h syscall.Handle, baud int, databits byte, parity Parity, stop
 		params.StopBits = 2
 	default:
 		return ErrBadStopBits
+	}
+
+	if flowControl {
+		params.flags[0] |= 0x04 // fOutxCtsFlow = 0x1
+		params.flags[1] |= 0x20 // fRtsControl = RTS_CONTROL_HANDSHAKE (0x2)
 	}
 
 	r, _, err := syscall.Syscall(nSetCommState, 2, uintptr(h), uintptr(unsafe.Pointer(&params)), 0)
